@@ -1,8 +1,13 @@
 mod maps;
 
-use std::io::{BufRead, BufReader, Read};
+use std::{
+    io::{BufRead, BufReader},
+    os::unix::prelude::FileExt,
+};
 
 use clap::Parser;
+use maps::MapsRecord;
+use memmem::{TwoWaySearcher, Searcher};
 
 /// Memory Grep
 #[derive(Parser, Debug)]
@@ -15,6 +20,35 @@ struct Args {
     /// Search text
     #[clap()]
     text: String,
+}
+
+const MAX_MEM: usize = 1_073_741_824; // 1GiB
+
+fn grep_memory_region(pid: i32, record: MapsRecord, text: &str) -> anyhow::Result<Option<String>> {
+    let mem = std::fs::File::open(format!("/proc/{pid}/mem"))?;
+
+    if record.address_upper <= record.address_lower {
+        return Err(anyhow::anyhow!(
+            "bad record (zero size or lower bound > upper bound)"
+        ));
+    }
+    let size = record.address_upper - record.address_lower - 1;
+
+    if size > MAX_MEM {
+        return Err(anyhow::anyhow!(
+            "too large"
+        ));
+    }
+
+    let mut buf = vec![0; size];
+    let bufslice = &mut buf[0..size - 1];
+
+    let _n = mem.read_at(bufslice, record.address_lower as u64)?;
+
+    let search = TwoWaySearcher::new(text.as_bytes());
+    let result = search.search_in(bufslice);
+
+    Ok(result.map(|pos| format!("record:{record:?}, pos: {pos}")))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -34,7 +68,11 @@ fn main() -> anyhow::Result<()> {
         .map(maps::MapsRecord::try_from_line)
         .filter_map(Result::ok)
         .filter(|record| record.inode == 0)
-        .for_each(|record| println!("{record:#?}"));
+        .filter(|record| record.perms.starts_with("rw"))
+        .map(|record| grep_memory_region(pid, record, &text))
+        .filter_map(Result::ok)
+        .flatten()
+        .for_each(|hit| println!("hit: {hit}"));
 
     Ok(())
 }

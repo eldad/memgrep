@@ -38,7 +38,7 @@ impl From<Option<&str>> for MapsPath {
                 "[vvar]" => Self::VVar,
                 "[vsyscall]" => Self::VSyscall,
                 _ => Self::File(path.to_owned()),
-            }
+            },
         }
     }
 }
@@ -53,11 +53,10 @@ pub struct MapsRecord {
     pub address_upper: usize,
 
     /// ```
-    /// r = read
-    /// w = write
-    /// x = execute
-    /// s = shared
-    /// p = private (copy on write)
+    /// r/- = read
+    /// w/- = write
+    /// x/- = execute
+    /// s/p = shared / private (copy on write)
     /// ```
     pub perms: String,
 
