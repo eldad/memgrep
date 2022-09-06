@@ -7,7 +7,7 @@ use std::{
 
 use clap::Parser;
 use maps::MapsRecord;
-use memmem::{TwoWaySearcher, Searcher};
+use memmem::{Searcher, TwoWaySearcher};
 
 /// Memory Grep
 #[derive(Parser, Debug)]
@@ -20,13 +20,20 @@ struct Args {
     /// Search text
     #[clap()]
     text: String,
+
+    /// Erase text with spaces (0x20)
+    #[clap(short, long)]
+    erase: bool,
 }
 
 const MAX_MEM: usize = 1_073_741_824; // 1GiB
 
-fn grep_memory_region(pid: i32, record: MapsRecord, text: &str) -> anyhow::Result<Option<String>> {
-    let mem = std::fs::File::open(format!("/proc/{pid}/mem"))?;
-
+fn grep_memory_region(
+    pid: i32,
+    record: MapsRecord,
+    text: &str,
+    erase: bool,
+) -> anyhow::Result<Option<String>> {
     if record.address_upper <= record.address_lower {
         return Err(anyhow::anyhow!(
             "bad record (zero size or lower bound > upper bound)"
@@ -35,10 +42,13 @@ fn grep_memory_region(pid: i32, record: MapsRecord, text: &str) -> anyhow::Resul
     let size = record.address_upper - record.address_lower - 1;
 
     if size > MAX_MEM {
-        return Err(anyhow::anyhow!(
-            "too large"
-        ));
+        return Err(anyhow::anyhow!("too large"));
     }
+
+    let mem = std::fs::File::options()
+        .read(true)
+        .write(true)
+        .open(format!("/proc/{pid}/mem"))?;
 
     let mut buf = vec![0; size];
     let bufslice = &mut buf[0..size - 1];
@@ -48,6 +58,15 @@ fn grep_memory_region(pid: i32, record: MapsRecord, text: &str) -> anyhow::Resul
     let search = TwoWaySearcher::new(text.as_bytes());
     let result = search.search_in(bufslice);
 
+    if let Some(pos) = result {
+        if erase {
+            let spaces = vec![0x20; text.len()];
+            let offset = record.address_lower + pos;
+            let res = mem.write_at(&spaces, offset as u64);
+            println!("erase: {res:#?}");
+        }
+    }
+
     Ok(result.map(|pos| format!("record:{record:?}, pos: {pos}")))
 }
 
@@ -56,6 +75,7 @@ fn main() -> anyhow::Result<()> {
 
     let pid = args.pid;
     let text = args.text;
+    let erase = args.erase;
 
     println!("Attaching to PID {pid}, searching for {text}");
 
@@ -69,7 +89,7 @@ fn main() -> anyhow::Result<()> {
         .filter_map(Result::ok)
         .filter(|record| record.inode == 0)
         .filter(|record| record.perms.starts_with("rw"))
-        .map(|record| grep_memory_region(pid, record, &text))
+        .map(|record| grep_memory_region(pid, record, &text, erase))
         .filter_map(Result::ok)
         .flatten()
         .for_each(|hit| println!("hit: {hit}"));
