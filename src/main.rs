@@ -2,7 +2,7 @@ mod maps;
 
 use std::{
     io::{BufRead, BufReader},
-    os::unix::prelude::FileExt,
+    os::unix::prelude::FileExt, fmt::Debug,
 };
 
 use clap::Parser;
@@ -70,6 +70,19 @@ fn grep_memory_region(
     Ok(result.map(|pos| format!("record:{record:?}, pos: {pos}")))
 }
 
+fn ok_but_complain<T, E>(result: Result<T, E>) -> Option<T>
+where
+    E: Debug
+{
+    match result {
+        Ok(val) => Some(val),
+        Err(err) => {
+            eprintln!("Warning: {err:?}");
+            None
+        }
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
@@ -84,13 +97,13 @@ fn main() -> anyhow::Result<()> {
 
     buf_reader
         .lines()
-        .filter_map(Result::ok)
+        .filter_map(ok_but_complain)
         .map(maps::MapsRecord::try_from_line)
-        .filter_map(Result::ok)
+        .filter_map(ok_but_complain)
         .filter(|record| record.inode == 0)
         .filter(|record| record.perms.starts_with("rw"))
         .map(|record| grep_memory_region(pid, record, &text, erase))
-        .filter_map(Result::ok)
+        .filter_map(ok_but_complain)
         .flatten()
         .for_each(|hit| println!("hit: {hit}"));
 
