@@ -2,24 +2,32 @@ use std::os::unix::prelude::FileExt;
 
 use super::MapsRecord;
 use memmem::{Searcher, TwoWaySearcher};
+use thiserror::Error;
 
-const MAX_MEM: usize = 1_073_741_824; // 1GiB
+#[derive(Error, Debug)]
+pub enum GrepError {
+    #[error("bad record (zero size or lower bound > upper bound)")]
+    BadAddressSpaceRecord,
+    #[error("max region size exceeded, region size: {}", .0)]
+    MaxRegionSizeExceeded(usize),
+    #[error("IO Error: {}", .0)]
+    IOError(#[from] std::io::Error),
+}
 
 pub fn grep_memory_region(
     pid: i32,
     record: MapsRecord,
     text: &str,
     erase: bool,
-) -> anyhow::Result<Option<String>> {
+    max_region_size: usize,
+) -> Result<Option<String>, GrepError> {
     if record.address_upper <= record.address_lower {
-        return Err(anyhow::anyhow!(
-            "bad record (zero size or lower bound > upper bound)"
-        ));
+        return Err(GrepError::BadAddressSpaceRecord);
     }
     let size = record.address_upper - record.address_lower - 1;
 
-    if size > MAX_MEM {
-        return Err(anyhow::anyhow!("too large"));
+    if size > max_region_size {
+        return Err(GrepError::MaxRegionSizeExceeded(size))?;
     }
 
     let mem = std::fs::File::options()

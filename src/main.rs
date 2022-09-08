@@ -29,6 +29,10 @@ struct Args {
     /// Set log level to debug
     #[clap(short, long)]
     debug: bool,
+
+    /// Set maximum region size. Regions larger than this size will not be searched.
+    #[clap(short, long, default_value = "1073741824")]
+    max_region_size: usize,
 }
 
 fn ok_but_complain<T, E>(result: Result<T, E>) -> Option<T>
@@ -60,7 +64,6 @@ fn main() -> anyhow::Result<()> {
 
     let pid = args.pid;
     let text = args.text;
-    let erase = args.erase;
 
     setup_tracing(args.debug)?;
 
@@ -76,7 +79,7 @@ fn main() -> anyhow::Result<()> {
         .filter_map(ok_but_complain)
         .filter(|record| record.inode == 0)
         .filter(|record| record.perms.starts_with("rw"))
-        .map(|record| grep::grep_memory_region(pid, record, &text, erase))
+        .map(|record| grep::grep_memory_region(pid, record, &text, args.erase, args.max_region_size))
         .filter_map(ok_but_complain)
         .flatten()
         .for_each(|hit| println!("hit: {hit}"));
