@@ -19,7 +19,7 @@ pub fn grep_memory_region(
     pid: i32,
     record: MapsRecord,
     text: &str,
-    erase: bool,
+    erase: Option<u8>,
     max_region_size: usize,
 ) -> Result<Option<String>, GrepError> {
     if record.address_upper <= record.address_lower {
@@ -44,16 +44,14 @@ pub fn grep_memory_region(
     let search = TwoWaySearcher::new(text.as_bytes());
     let result = search.search_in(bufslice);
 
-    if let Some(pos) = result {
-        if erase {
-            let spaces = vec![0x20; text.len()];
-            let offset = record.address_lower + pos;
-            let res = mem.write_at(&spaces, offset as u64);
+    if let (Some(pos), Some(erase_val)) = (result, erase) {
+        let eraser = vec![erase_val; text.len()];
+        let offset = record.address_lower + pos;
+        let res = mem.write_at(&eraser, offset as u64);
 
-            match res {
-                Err(err) => error!("erase error: {err}"),
-                Ok(pos) => info!("Erased from [{record}] at position {pos}"),
-            }
+        match res {
+            Err(err) => error!("erase error: {err}"),
+            Ok(pos) => info!("Erased from [{record}] at position {pos}"),
         }
     }
 
