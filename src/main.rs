@@ -11,8 +11,15 @@ use maps::MapsRecord;
 use tracing::{debug, info, Level};
 
 /// Memory Grep
+///
+/// Searches for a particular text in all memory regions that are not virtual or not mapped
+/// to any file: stack, heap, or anonymous pages.
+///
+/// When searching, only the first match is returned for each region.
+///
+/// When erasing, all matches are searched and erased.
 #[derive(Parser, Debug)]
-#[clap(author = "Eldad Zack <eldad@fogrefinery.com>", version, about, long_about = None)]
+#[clap(author = "Eldad Zack <eldad@fogrefinery.com>", version, about)]
 struct Args {
     /// PID
     #[clap(short, long)]
@@ -73,7 +80,7 @@ fn main() -> anyhow::Result<()> {
 
     setup_tracing(args.debug)?;
 
-    info!("Attaching to PID {pid}, searching for {text}");
+    info!("Reading PID {pid} maps");
 
     let maps = std::fs::File::open(format!("/proc/{pid}/maps"))?;
     let buf_reader = BufReader::new(maps);
@@ -88,7 +95,7 @@ fn main() -> anyhow::Result<()> {
         .map(|record| grep::grep_memory_region(pid, record, &text, erase, args.max_region_size))
         .filter_map(ok_but_complain)
         .flatten()
-        .for_each(|hit| println!("{hit}"));
+        .for_each(|(region, pos)| println!("First match for region {region} found at {pos:#018x}"));
 
     Ok(())
 }
