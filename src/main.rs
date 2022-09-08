@@ -1,13 +1,15 @@
 mod maps;
 
 use std::{
+    fmt::Debug,
     io::{BufRead, BufReader},
-    os::unix::prelude::FileExt, fmt::Debug,
+    os::unix::prelude::FileExt,
 };
 
 use clap::Parser;
 use maps::MapsRecord;
 use memmem::{Searcher, TwoWaySearcher};
+use tracing::{debug, info, Level};
 
 /// Memory Grep
 #[derive(Parser, Debug)]
@@ -24,6 +26,10 @@ struct Args {
     /// Erase text with spaces (0x20)
     #[clap(short, long)]
     erase: bool,
+
+    /// Set log level to debug
+    #[clap(short, long)]
+    debug: bool,
 }
 
 const MAX_MEM: usize = 1_073_741_824; // 1GiB
@@ -72,15 +78,26 @@ fn grep_memory_region(
 
 fn ok_but_complain<T, E>(result: Result<T, E>) -> Option<T>
 where
-    E: Debug
+    E: Debug,
 {
     match result {
         Ok(val) => Some(val),
         Err(err) => {
-            eprintln!("Warning: {err:?}");
+            debug!("Warning: {err:?}");
             None
         }
     }
+}
+
+fn setup_tracing(debug: bool) -> Result<(), tracing::dispatcher::SetGlobalDefaultError> {
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(if debug {
+            Level::DEBUG
+        } else {
+            Level::INFO
+        })
+        .finish();
+    tracing::subscriber::set_global_default(subscriber)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -90,7 +107,9 @@ fn main() -> anyhow::Result<()> {
     let text = args.text;
     let erase = args.erase;
 
-    println!("Attaching to PID {pid}, searching for {text}");
+    setup_tracing(args.debug)?;
+
+    info!("Attaching to PID {pid}, searching for {text}");
 
     let maps = std::fs::File::open(format!("/proc/{pid}/maps"))?;
     let buf_reader = BufReader::new(maps);
