@@ -1,9 +1,9 @@
-use std::{os::unix::prelude::FileExt};
+use std::os::unix::prelude::FileExt;
 
 use super::MapsRecord;
 use memmem::{Searcher, TwoWaySearcher};
 use thiserror::Error;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 #[derive(Error, Debug)]
 pub enum GrepError {
@@ -54,7 +54,6 @@ pub fn grep_memory_region(
                 Err(err) => error!("erase error: {err}"),
                 Ok(pos) => info!("Erased from [{record}] at position {pos}"),
             }
-
         }
     }
 

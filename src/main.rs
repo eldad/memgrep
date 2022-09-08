@@ -1,5 +1,5 @@
-mod maps;
 mod grep;
+mod maps;
 
 use std::{
     fmt::Debug,
@@ -50,11 +50,7 @@ where
 
 fn setup_tracing(debug: bool) -> Result<(), tracing::dispatcher::SetGlobalDefaultError> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(if debug {
-            Level::DEBUG
-        } else {
-            Level::INFO
-        })
+        .with_max_level(if debug { Level::DEBUG } else { Level::INFO })
         .finish();
     tracing::subscriber::set_global_default(subscriber)
 }
