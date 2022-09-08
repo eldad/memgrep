@@ -1,8 +1,9 @@
-use std::os::unix::prelude::FileExt;
+use std::{os::unix::prelude::FileExt};
 
 use super::MapsRecord;
 use memmem::{Searcher, TwoWaySearcher};
 use thiserror::Error;
+use tracing::{debug, error, info};
 
 #[derive(Error, Debug)]
 pub enum GrepError {
@@ -48,9 +49,14 @@ pub fn grep_memory_region(
             let spaces = vec![0x20; text.len()];
             let offset = record.address_lower + pos;
             let res = mem.write_at(&spaces, offset as u64);
-            println!("erase: {res:#?}");
+
+            match res {
+                Err(err) => error!("erase error: {err}"),
+                Ok(pos) => info!("Erased from [{record}] at position {pos}"),
+            }
+
         }
     }
 
-    Ok(result.map(|pos| format!("record:{record:?}, pos: {pos}")))
+    Ok(result.map(|pos| format!("[{record}] @ position {pos:#18x} ({pos})")))
 }

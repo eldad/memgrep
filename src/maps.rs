@@ -1,6 +1,6 @@
 //! NOTE: Documentation sourced from the `proc(5)` manpage.
 
-use std::num::ParseIntError;
+use std::{fmt::Display, num::ParseIntError};
 
 use thiserror::Error;
 
@@ -100,9 +100,7 @@ pub enum MapsError {
 
 macro_rules! next {
     ($iter:ident, $field:literal) => {
-        $iter
-            .next()
-            .ok_or_else(|| MapsError::MissingField($field.to_owned()))
+        $iter.next().ok_or_else(|| MapsError::MissingField($field.to_owned()))
     };
 }
 
@@ -138,5 +136,13 @@ impl MapsRecord {
             inode: from_hex!(u64, inode)?,
             path: path_name.into(),
         })
+    }
+}
+
+impl Display for MapsRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#018x}-{:#018x}", self.address_lower, self.address_upper)?;
+        write!(f, " <{:?}>", self.path)?;
+        Ok(())
     }
 }
