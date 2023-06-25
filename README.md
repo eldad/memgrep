@@ -10,7 +10,7 @@ Eldad Zack <eldad@fogrefinery.com>
 Memory Grep
 
 Searches for a particular text in all memory regions that are not virtual or not mapped to any file:
-stack, heap, or anonymous pages.
+stack, heap, or anonymous pages. Search text can be specified as bytes using the `--hex` flag.
 
 When searching, only the first match is returned for each region.
 
