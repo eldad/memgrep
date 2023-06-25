@@ -20,7 +20,7 @@ pub enum GrepError {
 pub fn grep_memory_region(
     pid: i32,
     record: MapsRecord,
-    text: &str,
+    text: &[u8],
     erase: Option<u8>,
     max_region_size: usize,
 ) -> Result<Option<(MapsRecord, usize)>, GrepError> {
@@ -45,7 +45,7 @@ pub fn grep_memory_region(
         return Err(GrepError::MemoryReadBytesMismatch { size, bytes_read: n });
     }
 
-    let search = TwoWaySearcher::new(text.as_bytes());
+    let search = TwoWaySearcher::new(text);
     let mut result = search.search_in(&buf);
 
     let mut cursor = 0;

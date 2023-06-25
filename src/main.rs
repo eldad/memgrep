@@ -29,6 +29,10 @@ struct Args {
     #[clap()]
     text: String,
 
+    /// Parse search text as hex string
+    #[clap(short, long)]
+    hex: bool,
+
     /// Erase text
     #[clap(short, long)]
     erase: bool,
@@ -70,7 +74,14 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let pid = args.pid;
-    let text = args.text;
+
+    let hextext: Option<Vec<u8>> = if args.hex {
+        Some(hex::decode(&args.text)?)
+    } else {
+        None
+    };
+
+    let text: &[u8] = hextext.as_ref().map(|v| v.as_ref()).unwrap_or(args.text.as_bytes());
 
     let erase = if args.erase {
         Some(args.erase_value)
@@ -92,7 +103,7 @@ fn main() -> anyhow::Result<()> {
         .filter_map(ok_but_complain)
         .filter(|record| record.inode == 0)
         .filter(|record| record.perms.starts_with("rw"))
-        .map(|record| grep::grep_memory_region(pid, record, &text, erase, args.max_region_size))
+        .map(|record| grep::grep_memory_region(pid, record, text, erase, args.max_region_size))
         .filter_map(ok_but_complain)
         .flatten()
         .for_each(|(region, pos)| println!("First match for region {region} found at {pos:#018x}"));
