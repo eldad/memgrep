@@ -5,7 +5,7 @@ Search (and optionally erase) a particular text in process memory.
 # Reference
 
 ```
-memgrep 0.1.0
+memgrep 0.2.0
 Eldad Zack <eldad@fogrefinery.com>
 Memory Grep
 
@@ -35,7 +35,10 @@ OPTIONS:
 
             [default: 32]
 
-    -h, --help
+    -h, --hex
+            Parse search text as hex string
+
+        --help
             Print help information
 
     -m, --max-region-size <MAX_REGION_SIZE>
