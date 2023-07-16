@@ -76,19 +76,11 @@ fn main() -> anyhow::Result<()> {
 
     let pid = args.pid;
 
-    let hextext: Option<Vec<u8>> = if args.hex {
-        Some(hex::decode(&args.text)?)
-    } else {
-        None
-    };
+    let hextext: Option<Vec<u8>> = if args.hex { Some(hex::decode(&args.text)?) } else { None };
 
     let text: &[u8] = hextext.as_ref().map(|v| v.as_ref()).unwrap_or(args.text.as_bytes());
 
-    let erase = if args.erase {
-        Some(args.erase_value)
-    } else {
-        None
-    };
+    let erase = if args.erase { Some(args.erase_value) } else { None };
 
     setup_tracing(args.debug)?;
 
