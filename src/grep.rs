@@ -30,7 +30,7 @@ pub fn grep_memory_region(
     let size = record.address_upper - record.address_lower - 1;
 
     if size > max_region_size {
-        return Err(GrepError::MaxRegionSizeExceeded(size))?;
+        Err(GrepError::MaxRegionSizeExceeded(size))?;
     }
 
     let mem = std::fs::File::options()
