@@ -24,6 +24,7 @@ pub enum MapsPath {
     Anonymous,
 
     /// File
+    #[allow(unused)]
     File(String),
 }
 
@@ -61,9 +62,11 @@ pub struct MapsRecord {
     pub perms: String,
 
     /// Offset into the file.
+    #[allow(unused)]
     pub offset: usize,
 
     /// Device major [12 bits]:minor [20 bits]
+    #[allow(unused)]
     pub dev: String,
 
     /// inode on that device. 0 indicates no inode is associated with the memory region as would be the case with BSS (uninitialized data).
